@@ -1,8 +1,8 @@
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 // token id 從 0 開始
 contract BBox is IERC721, IERC721Metadata, Ownable {
     using Address for address;
+    using Strings for uint256;
 
     uint16 constant public MAX_SUPPLY = 9999;
 
@@ -255,7 +256,7 @@ contract BBox is IERC721, IERC721Metadata, Ownable {
         _mint(to, amount);
     }
 
-    function _calculateMaxByAmount(uint16 amount) private returns (uint16) {
+    function _calculateMaxByAmount(uint16 amount) view private returns (uint16) {
         return uint16(totalSupply + amount - 1);
     }
 
