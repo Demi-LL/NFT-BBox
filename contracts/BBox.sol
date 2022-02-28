@@ -64,13 +64,16 @@ contract BBox is IERC721, IERC721Metadata, Ownable {
     }
 
     modifier existToken(uint256 tokenId) {
-        require(totalSupply > tokenId);
+        require(totalSupply > tokenId, "Token hasn't been minted yet.");
         _;
     }
 
     modifier onlyApprovedOrOwner(address spender, uint256 tokenId) {
         address owner = this.ownerOf(tokenId);
-        require(spender == owner || getApproved(tokenId) == spender || isApprovedForAll(owner, spender), "You don't have permission to manipulate it.");
+        require(
+            spender == owner || getApproved(tokenId) == spender || isApprovedForAll(owner, spender),
+            "You don't have permission to manipulate it."
+        );
         _;
     }
 
@@ -101,7 +104,7 @@ contract BBox is IERC721, IERC721Metadata, Ownable {
     }
 
     /**
-    * tokenId: 0 ~ MAX_SUPPLY
+    * tokenId: 0 ~ totalSupply
     */
     function ownerOf(uint256 tokenId) override external view existToken(tokenId) returns (address owner) {
         return _owners[tokenId];
@@ -194,7 +197,7 @@ contract BBox is IERC721, IERC721Metadata, Ownable {
     }
 
     function _mint(address to, uint16 amount) private nonZeroAddress(to) isExceedMaxSupply(amount) {
-        require(totalSupply + amount < openingMax, "Exceed the supply amount of current stage.");
+        require(totalSupply + amount - 1 <= openingMax, "Exceed the supply amount of current stage.");
 
         for (uint16 i = 0; i < amount; i++) {
             uint16 tokenId = uint16(totalSupply + i);
