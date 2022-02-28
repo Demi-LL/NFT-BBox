@@ -1,6 +1,7 @@
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
@@ -8,16 +9,22 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 
 // token id 從 0 開始
-contract BBox is IERC721, IERC721Metadata {
+contract BBox is IERC721, IERC721Metadata, Ownable {
     using Address for address;
 
     uint16 constant public MAX_SUPPLY = 9999;
+
+    // 當前階段開放購買的 token ID 最大值
+    uint16 private openingMax;
 
     uint256 public totalSupply;
 
     string override public name;
 
     string override public symbol;
+
+    // 是否開放購買
+    bool private purchaseStatus = false;
 
     mapping(uint256 => address) private _owners;
 
@@ -28,6 +35,11 @@ contract BBox is IERC721, IERC721Metadata {
 
     // 特定帳戶的第三方授權
     mapping(address => mapping(address => bool)) private _operatorApprovals;
+
+    // 記錄當前階段開放購買最大值的改變
+    event modifyOpeningMax(uint16 maxId);
+    // 紀錄開放購買狀態的改變
+    event modifyPurchaseStatus(bool status);
 
     /**
     * name: BBOX
@@ -68,6 +80,11 @@ contract BBox is IERC721, IERC721Metadata {
             _checkOnERC721Received(from, to, tokenId, _data),
             "ERC721: transfer to non ERC721Receiver implementer."
         );
+    }
+
+    modifier isExceedMaxSupply(uint16 amount) {
+        require(totalSupply + amount < MAX_SUPPLY, "Will exceed max supply.");
+        _;
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165) returns (bool) {
@@ -135,6 +152,34 @@ contract BBox is IERC721, IERC721Metadata {
         return _operatorApprovals[owner][operator];
     }
 
+    /**
+    * 設定開放購買區間
+    */
+    function setOpeningMax(uint16 amount) external onlyOwner isExceedMaxSupply(amount) {
+        openingMax = uint16(totalSupply + amount - 1);
+
+        emit modifyOpeningMax(openingMax);
+    }
+
+    /**
+    * 設定開放購買狀態
+    */
+    function setPurchaseStatus(bool status) external onlyOwner {
+        require(purchaseStatus != status, "Status has been set.");
+
+        purchaseStatus = status;
+
+        emit modifyPurchaseStatus(status);
+    }
+
+    function mintNFT() external {
+        _safeMint(msg.sender, 1, "");
+    }
+
+    function airdrop(address to, uint16 amount) external onlyOwner nonZeroAddress(to) {
+        _safeMint(to, amount, "");
+    }
+
     function _transfer(address from, address to, uint256 tokenId) private
         existToken(tokenId) nonZeroAddress(to) onlyApprovedOrOwner(from, tokenId)
     {
@@ -148,19 +193,24 @@ contract BBox is IERC721, IERC721Metadata {
         emit Transfer(from, to, tokenId);
     }
 
-    function _mint(address to, uint256 tokenId) private nonZeroAddress(to) {
-        require(tokenId >= totalSupply, "The token already been minted.");
+    function _mint(address to, uint16 amount) private nonZeroAddress(to) isExceedMaxSupply(amount) {
+        require(totalSupply + amount < openingMax, "Exceed the supply amount of current stage.");
 
-        _balances[to]++;
-        _owners[tokenId] = to;
+        for (uint16 i = 0; i < amount; i++) {
+            uint16 tokenId = uint16(totalSupply + i);
+            _owners[tokenId] = to;
 
-        emit Transfer(address(0), to, tokenId);
+            emit Transfer(address(0), to, tokenId);
+        }
+
+        totalSupply += amount;
+        _balances[to] += amount;
     }
 
-    function _safeMint(address to, uint256 tokenId, bytes memory _data) internal virtual
-        checkSupportERC721(address(0), to, tokenId, _data)
+    function _safeMint(address to, uint16 amount, bytes memory _data) internal virtual
+        checkSupportERC721(address(0), to, totalSupply, _data)
     {
-        _mint(to, tokenId);
+        _mint(to, amount);
     }
 
     /**
