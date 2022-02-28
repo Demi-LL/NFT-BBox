@@ -15,13 +15,23 @@ contract BBox is IERC721, IERC721Metadata, Ownable {
     uint16 constant public MAX_SUPPLY = 9999;
 
     // 當前階段開放購買的 token ID 最大值
+    uint16 private currentStageMax;
+
+    // 當前已開盲盒的 ID 最大
     uint16 private openingMax;
 
     uint256 public totalSupply;
 
+    // 開盲盒路徑
+    string private _baseURI;
+
+    // 盲盒預覽路徑
+    string private _baseMapURI;
+
     string override public name;
 
     string override public symbol;
+
 
     // 是否開放購買
     bool private purchaseStatus = false;
@@ -37,6 +47,8 @@ contract BBox is IERC721, IERC721Metadata, Ownable {
     mapping(address => mapping(address => bool)) private _operatorApprovals;
 
     // 記錄當前階段開放購買最大值的改變
+    event modifyCurrentStageMax(uint16 maxId);
+    // 記錄當前階段已開盲盒最大值的改變
     event modifyOpeningMax(uint16 maxId);
     // 紀錄開放購買狀態的改變
     event modifyPurchaseStatus(bool status);
@@ -96,8 +108,14 @@ contract BBox is IERC721, IERC721Metadata, Ownable {
             interfaceId == type(IERC721Metadata).interfaceId;
     }
 
-    // TODO
-    function tokenURI(uint256 tokenId) override external view returns (string memory) {}
+    function tokenURI(uint256 tokenId) override external view existToken(tokenId) returns (string memory) {
+        if (tokenId <= openingMax) {
+            return string(abi.encodePacked(_baseURI, tokenId.toString(), ".json"));
+        }
+        else {
+            return _baseMapURI;
+        }
+    }
     
     function balanceOf(address owner) override external view nonZeroAddress(owner) returns (uint256 balance) {
         return _balances[owner];
@@ -158,9 +176,16 @@ contract BBox is IERC721, IERC721Metadata, Ownable {
     /**
     * 設定開放購買區間
     */
-    function setOpeningMax(uint16 amount) external onlyOwner isExceedMaxSupply(amount) {
-        openingMax = uint16(totalSupply + amount - 1);
+    function setCurrentStageMax(uint16 amount) external onlyOwner isExceedMaxSupply(amount) {
+        currentStageMax = _calculateMaxByAmount(amount);
+        emit modifyCurrentStageMax(currentStageMax);
+    }
 
+    /**
+    * 設定開放盲盒區間
+    */
+    function setOpeningMax(uint16 amount) external onlyOwner isExceedMaxSupply(amount) {
+        openingMax = _calculateMaxByAmount(amount);
         emit modifyOpeningMax(openingMax);
     }
 
@@ -173,6 +198,20 @@ contract BBox is IERC721, IERC721Metadata, Ownable {
         purchaseStatus = status;
 
         emit modifyPurchaseStatus(status);
+    }
+
+    /**
+    * 設定開啟盲盒路徑
+    */
+    function setBaseURI(string memory uri) external onlyOwner {
+        _baseURI = uri;
+    }
+
+    /**
+    * 設定未開盲盒路徑
+    */
+    function setBaseMapURI(string memory uri) external onlyOwner {
+        _baseMapURI = uri;
     }
 
     function mintNFT() external {
@@ -197,7 +236,7 @@ contract BBox is IERC721, IERC721Metadata, Ownable {
     }
 
     function _mint(address to, uint16 amount) private nonZeroAddress(to) isExceedMaxSupply(amount) {
-        require(totalSupply + amount - 1 <= openingMax, "Exceed the supply amount of current stage.");
+        require(totalSupply + amount - 1 <= currentStageMax, "Exceed the supply amount of current stage.");
 
         for (uint16 i = 0; i < amount; i++) {
             uint16 tokenId = uint16(totalSupply + i);
@@ -214,6 +253,10 @@ contract BBox is IERC721, IERC721Metadata, Ownable {
         checkSupportERC721(address(0), to, totalSupply, _data)
     {
         _mint(to, amount);
+    }
+
+    function _calculateMaxByAmount(uint16 amount) private returns (uint16) {
+        return uint16(totalSupply + amount - 1);
     }
 
     /**
