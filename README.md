@@ -1,5 +1,8 @@
 # NFT - Blind Box (BBOX)
 
+- 這是一個使用 ERC721 實作，並採用盲盒玩法的 NFT
+
+___
 ## hardhat
 
 - [network 設定](https://hardhat.org/config/#networks-configuration)
@@ -7,12 +10,12 @@
 - [部署](https://hardhat.org/guides/deploying.html)
 
 - 驗證合約
-```console
-$ npx hardhat verify --network <network in hardhat.config.js> <contract account address> {construct parameters}
+    ```console
+    $ npx hardhat verify --network <network in hardhat.config.js> <contract account address> {construct parameters}
 
-// Example
-$ npx hardhat verify --network rinkeby 0X... BBOX BOX
-```
+    // Example
+    $ npx hardhat verify --network rinkeby 0X... BBOX BOX
+    ```
 
     - References
         - https://moralis.io/how-to-verify-a-smart-contract-with-hardhat/
@@ -20,19 +23,19 @@ $ npx hardhat verify --network rinkeby 0X... BBOX BOX
         - https://www.bnbchain.world/en/blog/verify-with-hardhat/
 
 - 運行指令範例
-```console
-// 編譯合約
-$ npx hardhat compile
+    ```console
+    // 編譯合約
+    $ npx hardhat compile
 
-// 運行測試
-$ npx hardhat test
+    // 運行測試
+    $ npx hardhat test
 
-// 開啟本地測試鏈
-$ npx hardhat node
+    // 開啟本地測試鏈
+    $ npx hardhat node
 
-// 部署到特定網路上
-$ npx hardhat run --network <network in hardhat.config.js> scripts/deploy.js
-```
+    // 部署到特定網路上
+    $ npx hardhat run --network <network in hardhat.config.js> scripts/deploy.js
+    ```
 
 ___
 ## IPFS (InterPlanetary File System)
@@ -45,3 +48,9 @@ ___
     - https://nft.storage
     - https://www.pinata.cloud
     - https://infura.io
+
+___
+## Rinkeby 水龍頭
+
+- https://faucet.rinkeby.io/
+- https://faucets.chain.link/rinkeby
