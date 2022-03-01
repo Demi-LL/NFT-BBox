@@ -13,26 +13,25 @@ contract BBox is IERC721, IERC721Metadata, Ownable {
     using Address for address;
     using Strings for uint256;
 
-    uint16 constant public MAX_SUPPLY = 9999;
+    uint16 constant public MAX_SUPPLY = 10000;
 
-    // 當前階段開放購買的 token ID 最大值
-    uint16 private currentStageMax;
+    // 到當前時間段，開放購買的 token 最大數量
+    uint16 private allowMintMax;
 
-    // 當前已開盲盒的 ID 最大
-    uint16 private openingMax;
+    // 當前已開盲盒的最大數量
+    uint16 private openingAmount;
 
     uint256 public totalSupply;
 
     // 開盲盒路徑
     string private _baseURI;
 
-    // 盲盒預覽路徑
+    // 盲盒預覽圖路徑
     string private _baseMapURI;
 
     string override public name;
 
     string override public symbol;
-
 
     // 是否開放購買
     bool private purchaseStatus = false;
@@ -47,10 +46,10 @@ contract BBox is IERC721, IERC721Metadata, Ownable {
     // 特定帳戶的第三方授權
     mapping(address => mapping(address => bool)) private _operatorApprovals;
 
-    // 記錄當前階段開放購買最大值的改變
-    event modifyCurrentStageMax(uint16 maxId);
-    // 記錄當前階段已開盲盒最大值的改變
-    event modifyOpeningMax(uint16 maxId);
+    // 記錄到當前時間段，開放購買最大數量的改變
+    event modifyAllowMintMax(uint16 amount);
+    // 記錄當前階段已開盲盒最大數量的改變
+    event modifyOpeningAmount(uint16 amount);
     // 紀錄開放購買狀態的改變
     event modifyPurchaseStatus(bool status);
 
@@ -103,6 +102,14 @@ contract BBox is IERC721, IERC721Metadata, Ownable {
         _;
     }
 
+    /**
+    * 是否開放 mint
+    */
+    modifier onPurchase() {
+        require(purchaseStatus, "Can't purchase now.");
+        _;
+    }
+
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165) returns (bool) {
         return
             interfaceId == type(IERC721).interfaceId ||
@@ -110,7 +117,7 @@ contract BBox is IERC721, IERC721Metadata, Ownable {
     }
 
     function tokenURI(uint256 tokenId) override external view existToken(tokenId) returns (string memory) {
-        if (tokenId <= openingMax) {
+        if (tokenId < openingAmount) {
             return string(abi.encodePacked(_baseURI, tokenId.toString(), ".json"));
         }
         else {
@@ -177,17 +184,17 @@ contract BBox is IERC721, IERC721Metadata, Ownable {
     /**
     * 設定開放購買區間
     */
-    function setCurrentStageMax(uint16 amount) external onlyOwner isExceedMaxSupply(amount) {
-        currentStageMax = _calculateMaxByAmount(amount);
-        emit modifyCurrentStageMax(currentStageMax);
+    function setAllowMintMax(uint16 amount) external onlyOwner isExceedMaxSupply(amount) {
+        allowMintMax = _calculateMaxAmount(amount);
+        emit modifyAllowMintMax(allowMintMax);
     }
 
     /**
     * 設定開放盲盒區間
     */
-    function setOpeningMax(uint16 amount) external onlyOwner isExceedMaxSupply(amount) {
-        openingMax = _calculateMaxByAmount(amount);
-        emit modifyOpeningMax(openingMax);
+    function setOpeningAmount(uint16 amount) external onlyOwner isExceedMaxSupply(amount) {
+        openingAmount = _calculateMaxAmount(amount);
+        emit modifyOpeningAmount(openingAmount);
     }
 
     /**
@@ -215,7 +222,7 @@ contract BBox is IERC721, IERC721Metadata, Ownable {
         _baseMapURI = uri;
     }
 
-    function mintNFT() external {
+    function mintNFT() external onPurchase {
         _safeMint(msg.sender, 1, "");
     }
 
@@ -237,7 +244,7 @@ contract BBox is IERC721, IERC721Metadata, Ownable {
     }
 
     function _mint(address to, uint16 amount) private nonZeroAddress(to) isExceedMaxSupply(amount) {
-        require(totalSupply + amount - 1 <= currentStageMax, "Exceed the supply amount of current stage.");
+        require(totalSupply < allowMintMax, "Exceed the supply amount of current stage.");
 
         for (uint16 i = 0; i < amount; i++) {
             uint16 tokenId = uint16(totalSupply + i);
@@ -256,8 +263,8 @@ contract BBox is IERC721, IERC721Metadata, Ownable {
         _mint(to, amount);
     }
 
-    function _calculateMaxByAmount(uint16 amount) view private returns (uint16) {
-        return uint16(totalSupply + amount - 1);
+    function _calculateMaxAmount(uint16 amount) view private returns (uint16) {
+        return uint16(totalSupply + amount);
     }
 
     /**
